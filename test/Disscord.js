@@ -4,7 +4,7 @@ const { ethers } = require("hardhat");
 describe("Disscord", () => {
     let disscord, serversBefore;
     // addresses
-    let deployer, admin1;
+    let deployer, admin1, user1;
 
     // server details
     let serverName = "Blockchain";
@@ -17,7 +17,7 @@ describe("Disscord", () => {
     let serverId;
 
     beforeEach(async () => {
-        [deployer, admin1] = await ethers.getSigners();
+        [deployer, admin1, user1] = await ethers.getSigners();
         const Disscord = await ethers.getContractFactory("Disscord");
         disscord = await Disscord.deploy();
 
@@ -51,4 +51,15 @@ describe("Disscord", () => {
             expect(channel.createdBy).to.be.equal(admin1.address);
         });
     });
+
+    describe("ServerUser", async () => {
+        it("admits new user to server", async () => {
+            let username = "jim_bantu";
+            let serverId = servers[0].id;
+            await disscord.connect(user1).joinServer(username, serverId);
+            let serverUsers = await disscord.getServerUsers();
+            expect(serverUsers[0].user.username).to.be.equal(username);
+            expect(serverUsers[0].server.id).to.be.equal(serverId);
+        })
+    })
 });
