@@ -3,17 +3,32 @@ const { ethers } = require("hardhat");
 
 describe("Disscord", () => {
     let disscord, serversBefore;
-    let deployer, owner1;
+    // addresses
+    let deployer, admin1;
+
+    // server details
     let serverName = "Blockchain";
     let about = "All things blockchain!";
+    let servers, channels;
+
+    // channel details
+    let channelName = "getting started";
+    let channelAbout = "getting started with blockchain development";
+    let serverId;
 
     beforeEach(async () => {
-        [deployer, owner1] = await ethers.getSigners();
+        [deployer, admin1] = await ethers.getSigners();
         const Disscord = await ethers.getContractFactory("Disscord");
         disscord = await Disscord.deploy();
 
         serversBefore = await disscord.getServers();
         await disscord.createServer(serverName, about);
+        servers = await disscord.getServers()
+
+        // create channel
+        serverId = servers[0].id;
+        await disscord.connect(admin1).createChannel(channelName, channelAbout, serverId);
+        channels = await disscord.getChannels();
     })
 
     describe("Server", async () => {
@@ -24,6 +39,16 @@ describe("Disscord", () => {
             const newStore = serversAfter[0];
             expect(newStore.name).to.be.equal(serverName);
             expect(newStore.about).to.be.equal(about);
+        });
+    });
+
+    describe("Channel", async () => {
+        it("creates a new channel", async () => {
+            let channel = channels[0];
+            expect(channel.name).to.be.equal(channelName);
+            expect(channel.about).to.be.equal(channelAbout);
+            expect(channel.serverId).to.be.equal(serverId);
+            expect(channel.createdBy).to.be.equal(admin1.address);
         });
     });
 });
