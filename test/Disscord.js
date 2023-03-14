@@ -9,12 +9,15 @@ describe("Disscord", () => {
     // server details
     let serverName = "Blockchain";
     let about = "All things blockchain!";
-    let servers, channels;
+    let servers, channels, users;
 
     // channel details
     let channelName = "getting started";
     let channelAbout = "getting started with blockchain development";
     let serverId;
+
+    // user details
+    let username = "jim_bantu";
 
     beforeEach(async () => {
         [deployer, admin1, user1] = await ethers.getSigners();
@@ -29,6 +32,11 @@ describe("Disscord", () => {
         serverId = servers[0].id;
         await disscord.connect(admin1).createChannel(channelName, channelAbout, serverId);
         channels = await disscord.getChannels();
+
+        // create user
+        await disscord.connect(user1).joinServer(username, serverId);
+        users = await disscord.getServerUsers();
+        // console.log("Users: ", users)
     })
 
     describe("Server", async () => {
@@ -54,12 +62,19 @@ describe("Disscord", () => {
 
     describe("ServerUser", async () => {
         it("admits new user to server", async () => {
-            let username = "jim_bantu";
-            let serverId = servers[0].id;
-            await disscord.connect(user1).joinServer(username, serverId);
-            let serverUsers = await disscord.getServerUsers();
-            expect(serverUsers[0].user.username).to.be.equal(username);
-            expect(serverUsers[0].server.id).to.be.equal(serverId);
+            expect(users[0].user.username).to.be.equal(username);
+            expect(users[0].server.id).to.be.equal(serverId);
+            expect(users.length).to.be.equal(1);
+        })
+    })
+
+    describe("ChannelUser", async () => {
+        it("allows a user to subscribe to a channel", async () => {
+            let serverId = servers[0].id
+            let channelId = channels[0].id;
+            await disscord.connect(user1).joinChannel(serverId, channelId);
+            let channelUsers = await disscord.getChannelUsers();
+            expect(channelUsers.length).to.be.equal(1);
         })
     })
 });

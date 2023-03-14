@@ -28,8 +28,21 @@ contract Disscord {
         uint256 updatedAt;
     }
 
+    struct ServerChannel {
+        Server server;
+        Channel channel;
+        uint256 createdAt;
+    }
+
     struct ServerUser {
         Server server;
+        User user;
+        uint256 createdAt;
+    }
+
+    struct ServerChannelUser {
+        Server server;
+        Channel channel;
         User user;
         uint256 createdAt;
     }
@@ -38,16 +51,48 @@ contract Disscord {
     Channel[] public channels;
     User[] public users;
     ServerUser[] public serverUsers;
+    ServerChannel[] public serverChannels;
+    ServerChannelUser[] public serverChannelUsers;
 
     modifier serverExists(bytes32 _serverId) {
-        Server memory server = findServer(_serverId);
+        Server memory server = findServerById(_serverId);
         require(server.id != "", "server matching id doesn't exist");
+        _;
+    }
+
+    modifier channelExists(bytes32 _channelId) {
+        Channel memory channel = findChannelById(_channelId);
+        require(channel.id != "", "channel matching id doesn't exist");
+        _;
+    }
+
+    modifier userExists(address _address) {
+        User memory user = findUserByAddress(_address);
+        require(user.id != "", "user matching address doesn't exist");
         _;
     }
 
     modifier requireUniqueUserAddress(address _address) {
         User memory user = findUserByAddress(_address);
         require(user.userAddress != _address, "user matching address exists");
+        _;
+    }
+
+//    modifier requireUserNotAlreadyChannelMember(bytes32 _channelId, address _address) {
+//        ServerChannelUser memory channelUser = findUserInChannel(_channelId, _address);
+//        require(channelUser.channel.id == "" && channelUser.user.id == "", "the user is already a member of this channel");
+//        _;
+//    }
+//
+//    modifier requireUserIsServerMember(bytes32 _serverId, address _address) {
+//        ServerUser memory serverUser = findUserInServer(_serverId, _address);
+//        require(serverUser.server.id != "" && serverUser.user.id != "", "user must already be a member of the server");
+//        _;
+//    }
+
+    modifier channelExistsInServer(bytes32 _serverId, bytes32 _channelId) {
+        ServerChannel memory serverChannel = findChannelInServer(_serverId, _channelId);
+        require(serverChannel.server.id != "" && serverChannel.channel.id != "", "");
         _;
     }
 
@@ -73,7 +118,9 @@ contract Disscord {
         return server;
     }
 
-    function createChannel(string memory _name, string memory _about, bytes32 _serverId) serverExists(_serverId) public returns(Channel memory){
+    function createChannel(string memory _name, string memory _about, bytes32 _serverId)
+    // serverExists(_serverId)
+    public returns(Channel memory){
         Channel memory channel;
         channel.createdAt = block.timestamp;
         channel.id = bytes32(
@@ -86,11 +133,23 @@ contract Disscord {
         channel.serverId = _serverId;
         channel.createdBy = payable(msg.sender);
 
+        // server
+        Server memory server = findServerById(_serverId);
+
+        // server channels
+        ServerChannel memory serverChannel;
+        serverChannel.server = server;
+        serverChannel.channel = channel;
+        serverChannel.createdAt = channel.createdAt;
+
         channels.push(channel);
+        serverChannels.push(serverChannel);
         return channel;
     }
 
-    function joinServer(string memory _username, bytes32 _serverId) serverExists(_serverId) requireUniqueUserAddress(msg.sender) requireUniqueUsername(_username) public returns(ServerUser memory) {
+    function joinServer(string memory _username, bytes32 _serverId)
+    // serverExists(_serverId) requireUniqueUserAddress(msg.sender) requireUniqueUsername(_username)
+    public returns(ServerUser memory) {
         // assemble user details
         User memory user;
         user.createdAt = block.timestamp;
@@ -105,7 +164,7 @@ contract Disscord {
         // assemble serverUser details
         ServerUser memory serverUser;
         serverUser.user = user;
-        serverUser.server = findServer(_serverId);
+        serverUser.server = findServerById(_serverId);
         serverUser.createdAt = user.createdAt;
 
         // save to the blockchain
@@ -115,15 +174,41 @@ contract Disscord {
         return serverUser;
     }
 
+    function joinChannel(bytes32 _serverId, bytes32 _channelId)
+        // serverExists(_serverId) channelExists(_channelId) userExists(_userAddress)
+        // channelExistsInServer(_serverId, _channelId)
+        public returns(ServerChannelUser memory) {
+        // require that user is not already a member of the channel to prevent
+        // duplicates
+        // ServerChannelUser memory channelUser = findUserInChannel(_channelId, _userAddress);
+        // require(channelUser.channel.id == "" && channelUser.user.id == "", "the user is already a member of this channel");
+
+        // require that user is already a member of the server
+        // ServerUser memory serverUser = findUserInServer(_serverId, _userAddress);
+        // require(serverUser.server.id != "" && serverUser.user.id != "", "user must already be a member of the server");
+
+        ServerChannelUser memory channelUser;
+        channelUser.createdAt = block.timestamp;
+        channelUser.server = findServerById(_serverId);
+        channelUser.channel = findChannelById(_channelId);
+        channelUser.user = findUserByAddress(msg.sender);
+
+        serverChannelUsers.push(channelUser);
+
+        return channelUser;
+    }
+
+
     function getServers() public view returns(Server[] memory) {
         return servers;
     }
 
-    function findServer(bytes32 id) public view returns(Server memory) {
+    function findServerById(bytes32 id) public view returns(Server memory) {
         Server memory server;
         for(uint i = 0; i < servers.length; i++) {
             if(servers[i].id == id) {
                 server = servers[i];
+                break;
             }
         }
 
@@ -134,7 +219,7 @@ contract Disscord {
         return channels;
     }
 
-    function findChannel(bytes32 id) public view returns(Channel memory) {
+    function findChannelById(bytes32 id) public view returns(Channel memory) {
         Channel memory channel;
         for(uint i = 0; i < channels.length; i++) {
             if(channels[i].id == id) {
@@ -169,5 +254,46 @@ contract Disscord {
 
     function getServerUsers() public view returns(ServerUser[] memory) {
         return serverUsers;
+    }
+
+    function getServerChannels() public view returns(ServerChannel[] memory) {
+        return serverChannels;
+    }
+
+    function getChannelUsers() public view returns(ServerChannelUser[] memory) {
+        return serverChannelUsers;
+    }
+
+    function findChannelInServer(bytes32 _serverId, bytes32 _channelId) public view returns(ServerChannel memory) {
+        ServerChannel memory serverChannel;
+        for(uint i = 0; i < serverChannels.length; i++) {
+            if(serverChannels[i].server.id == _serverId && serverChannels[i].channel.id == _channelId) {
+                serverChannel = serverChannels[i];
+            }
+        }
+
+        return serverChannel;
+    }
+
+    function findUserInChannel(bytes32 _channelId, address _address) public view returns(ServerChannelUser memory) {
+        ServerChannelUser memory channelUser;
+        for(uint i = 0; i < serverChannelUsers.length; i++) {
+            if(serverChannelUsers[i].channel.id == _channelId && serverChannelUsers[i].user.userAddress == _address) {
+                channelUser = serverChannelUsers[i];
+            }
+        }
+
+        return channelUser;
+    }
+
+    function findUserInServer(bytes32 _serverId, address _address) public view returns(ServerUser memory) {
+        ServerUser memory serverUser;
+        for(uint i = 0; i < serverUsers.length; i++) {
+            if(serverUsers[i].server.id == _serverId && serverUsers[i].user.userAddress == _address) {
+                serverUser = serverUsers[i];
+            }
+        }
+
+        return serverUser;
     }
 }
