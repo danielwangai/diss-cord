@@ -41,10 +41,20 @@ contract Disscord {
     }
 
     struct ServerChannelUser {
-        Server server;
-        Channel channel;
-        User user;
+        bytes32 serverId;
+        bytes32 channelId;
+        address user;
         uint256 createdAt;
+    }
+
+    struct Message {
+        bytes32 id;
+        string message;
+        bytes32 serverId;
+        bytes32 channelId;
+        address createdBy;
+        uint256 createdAt;
+        uint256 updatedAt;
     }
 
     Server[] public servers;
@@ -53,6 +63,7 @@ contract Disscord {
     ServerUser[] public serverUsers;
     ServerChannel[] public serverChannels;
     ServerChannelUser[] public serverChannelUsers;
+    Message[] public messages;
 
     modifier serverExists(bytes32 _serverId) {
         Server memory server = findServerById(_serverId);
@@ -189,13 +200,32 @@ contract Disscord {
 
         ServerChannelUser memory channelUser;
         channelUser.createdAt = block.timestamp;
-        channelUser.server = findServerById(_serverId);
-        channelUser.channel = findChannelById(_channelId);
-        channelUser.user = findUserByAddress(msg.sender);
+        channelUser.serverId = _serverId;
+        channelUser.channelId = _channelId;
+        channelUser.user = msg.sender;
 
         serverChannelUsers.push(channelUser);
 
         return channelUser;
+    }
+
+    function sendMessage(bytes32 _serverId, bytes32 _channelId, string memory _message) public returns(Message memory) {
+        Message memory message;
+        message.createdAt = block.timestamp;
+        message.id = bytes32(
+            keccak256(
+                abi.encodePacked(_serverId, _channelId, _message, msg.sender, message.createdAt)
+            )
+        );
+
+        message.message = _message;
+        message.serverId = _serverId;
+        message.channelId = _channelId;
+        message.createdBy = msg.sender;
+
+        messages.push(message);
+
+        return message;
     }
 
 
@@ -217,6 +247,10 @@ contract Disscord {
 
     function getChannels() public view returns(Channel[] memory) {
         return channels;
+    }
+
+    function getMessages() public view returns(Message[] memory) {
+        return messages;
     }
 
     function findChannelById(bytes32 id) public view returns(Channel memory) {
@@ -278,7 +312,7 @@ contract Disscord {
     function findUserInChannel(bytes32 _channelId, address _address) public view returns(ServerChannelUser memory) {
         ServerChannelUser memory channelUser;
         for(uint i = 0; i < serverChannelUsers.length; i++) {
-            if(serverChannelUsers[i].channel.id == _channelId && serverChannelUsers[i].user.userAddress == _address) {
+            if(serverChannelUsers[i].channelId == _channelId && serverChannelUsers[i].user == _address) {
                 channelUser = serverChannelUsers[i];
             }
         }

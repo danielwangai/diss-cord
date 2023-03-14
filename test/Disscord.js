@@ -77,4 +77,16 @@ describe("Disscord", () => {
             expect(channelUsers.length).to.be.equal(1);
         })
     })
+
+    describe("Messages", async () => {
+        it("allows a user to send a message in the channel", async () => {
+            let serverId = servers[0].id
+            let channelId = channels[0].id;
+            let message = "Welcome to the channel";
+            await disscord.connect(user1).sendMessage(serverId, channelId, message);
+            let messages = await disscord.getMessages();
+            expect(messages.length).to.be.equal(1);
+            expect(messages[0].message).to.be.equal(message);
+        })
+    })
 });
