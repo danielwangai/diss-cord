@@ -9,15 +9,25 @@ describe("Disscord", () => {
     // server details
     let serverName = "Blockchain";
     let about = "All things blockchain!";
-    let servers, channels, users;
+    let servers, channels, users, channelUsers;
 
     // channel details
     let channelName = "getting started";
     let channelAbout = "getting started with blockchain development";
-    let serverId;
+    let serverId, channelId;
 
     // user details
     let username = "jim_bantu";
+
+    // message details
+    let messages, messageId;
+    let message = "Welcome to the channel";
+
+    // replies
+    /*
+    let replies;
+    let replyMessage = "Thank you :-)";
+     */
 
     beforeEach(async () => {
         [deployer, admin1, user1] = await ethers.getSigners();
@@ -36,7 +46,22 @@ describe("Disscord", () => {
         // create user
         await disscord.connect(user1).joinServer(username, serverId);
         users = await disscord.getServerUsers();
-        // console.log("Users: ", users)
+
+        // join channel
+        channelId = channels[0].id;
+        await disscord.connect(user1).joinChannel(serverId, channelId);
+        channelUsers = await disscord.getChannelUsers();
+
+        // send message
+        await disscord.connect(user1).sendMessage(serverId, channelId, message);
+        messages = await disscord.getMessages();
+        messageId = messages[0].id;
+
+        // reply to message
+        /*
+        await disscord.connect(user1).sendMessage(serverId, channelId, message);
+        messages = await disscord.getReplies(messageId, serverId, channelId, replyMessage);
+        */
     })
 
     describe("Server", async () => {
@@ -70,23 +95,24 @@ describe("Disscord", () => {
 
     describe("ChannelUser", async () => {
         it("allows a user to subscribe to a channel", async () => {
-            let serverId = servers[0].id
-            let channelId = channels[0].id;
-            await disscord.connect(user1).joinChannel(serverId, channelId);
-            let channelUsers = await disscord.getChannelUsers();
             expect(channelUsers.length).to.be.equal(1);
+            expect(channelUsers[0].serverId).to.be.equal(serverId);
+            expect(channelUsers[0].channelId).to.be.equal(channelId);
+            expect(channelUsers[0].user).to.be.equal(user1.address);
         })
     })
 
     describe("Messages", async () => {
         it("allows a user to send a message in the channel", async () => {
-            let serverId = servers[0].id
-            let channelId = channels[0].id;
-            let message = "Welcome to the channel";
-            await disscord.connect(user1).sendMessage(serverId, channelId, message);
-            let messages = await disscord.getMessages();
             expect(messages.length).to.be.equal(1);
             expect(messages[0].message).to.be.equal(message);
         })
     })
+
+    /*describe("Replies", async () => {
+        it("allows a user to reply to a message", async () => {
+            expect(replies.length).to.be.equal(1);
+            expect(replies[0].message).to.be.equal(message);
+        })
+    })*/
 });

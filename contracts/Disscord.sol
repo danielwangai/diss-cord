@@ -57,6 +57,17 @@ contract Disscord {
         uint256 updatedAt;
     }
 
+    struct Reply {
+        bytes32 id;
+        string message;
+        bytes32 parentMessageId;
+        bytes32 channelId;
+        bytes32 serverId;
+        address createdBy;
+        uint256 createdAt;
+        uint256 updatedAt;
+    }
+
     Server[] public servers;
     Channel[] public channels;
     User[] public users;
@@ -64,6 +75,7 @@ contract Disscord {
     ServerChannel[] public serverChannels;
     ServerChannelUser[] public serverChannelUsers;
     Message[] public messages;
+    Reply[] public replies;
 
     modifier serverExists(bytes32 _serverId) {
         Server memory server = findServerById(_serverId);
@@ -228,6 +240,25 @@ contract Disscord {
         return message;
     }
 
+//    function sendReply(bytes32 _messageId, bytes32 _serverId, bytes32 _channelId, string memory _replyMessage) public returns(Reply memory) {
+//        Reply memory reply;
+//        reply.createdAt = block.timestamp;
+//        reply.id = bytes32(
+//            keccak256(
+//                abi.encodePacked(_messageId, _serverId, _channelId, _replyMessage, msg.sender, reply.createdAt)
+//            )
+//        );
+//
+//        reply.message = _replyMessage;
+//        reply.parentMessageId = _messageId;
+//        reply.serverId = _serverId;
+//        reply.channelId = _channelId;
+//        reply.createdBy = msg.sender;
+//
+//        replies.push(reply);
+//
+//        return reply;
+//    }
 
     function getServers() public view returns(Server[] memory) {
         return servers;
@@ -252,6 +283,10 @@ contract Disscord {
     function getMessages() public view returns(Message[] memory) {
         return messages;
     }
+//
+//    function getReplies() public view returns(Reply[] memory) {
+//        return replies;
+//    }
 
     function findChannelById(bytes32 id) public view returns(Channel memory) {
         Channel memory channel;
