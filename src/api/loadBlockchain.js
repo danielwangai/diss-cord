@@ -1,6 +1,6 @@
 import {ethers} from "ethers";
-const config = require("../config.json");
-const abi = require("../abis/Disscord.json");
+import config from "../config.json";
+import abi from "../abis/Disscord.json";
 
 export const loadBlockchain = async () => {
     try {
@@ -13,13 +13,13 @@ export const loadBlockchain = async () => {
         const provider = new ethers.providers.Web3Provider(ethereum);
         const signer = provider.getSigner();
         const network = await provider.getNetwork();
-        const amazonContract = new ethers.Contract(
-            config[network.chainId].amazon.address,
+        const contract = new ethers.Contract(
+            config[network.chainId].contract.address,
             abi.abi,
             provider
         );
 
-        return {provider, signer, network, amazonContract}
+        return {provider, signer, network, contract}
     } catch (error) {
         console.log("Error connecting to the blockchain: ", error);
         return {};
